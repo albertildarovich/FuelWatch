@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Уведомления{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-bell"></i> Мои уведомления
+    </h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#alertModal">
+        <i class="bi bi-plus-lg"></i> Добавить уведомление
+    </button>
+</div>
+
+<div id="alerts-list">
+    <div class="text-center py-5">
+        <div class="spinner-border text-warning" role="status">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+    </div>
+</div>
+
+<!-- Modal для создания уведомления -->
+<div class="modal fade" id="alertModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Новое уведомление</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="alert-form">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Тип топлива</label>
+                        <select class="form-select" id="fuel_type_id" required>
+                            <option value="11">АИ-92</option>
+                            <option value="12">АИ-95</option>
+                            <option value="13">АИ-98</option>
+                            <option value="14">ДТ</option>
+                            <option value="15">Газ</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Максимальная цена (руб.)</label>
+                        <input type="number" class="form-control" id="max_price" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Город (опционально)</label>
+                        <input type="text" class="form-control" id="city" placeholder="Москва, Санкт-Петербург...">
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="notify_by_email" checked>
+                        <label class="form-check-label">Уведомить по email</label>
+                    </div>
+                    <div id="alert-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+const FUEL_NAMES = {11: 'АИ-92', 12: 'АИ-95', 13: 'АИ-98', 14: 'ДТ', 15: 'Газ'};
+
+async function loadAlerts() {
+    const container = document.getElementById('alerts-list');
+    const token = localStorage.getItem('access_token');
+    
+    if (!token) {
+        container.innerHTML = '<div class="alert alert-warning">Необходимо <a href="/login">войти</a> для просмотра уведомлений</div>';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/alerts/', {
+            headers: {'Authorization': 'Bearer ' + token}
+        });
+        
+        if (response.status === 401) {
+            container.innerHTML = '<div class="alert alert-warning">Сессия истекла. <a href="/login">Войдите</a> снова</div>';
+            return;
+        }
+        
+        const alerts = await response.json();
+        
+        if (alerts.length === 0) {
+            container.innerHTML = '<div class="alert alert-info">У вас пока нет уведомлений. Нажмите "Добавить уведомление", чтобы создать.</div>';
+            return;
+        }
+        
+        let html = '<div class="list-group">';
+        alerts.forEach(a => {
+            const triggered = !a.is_active;
+            html += `
+                <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center ${triggered ? 'list-group-item-success' : ''}">
+                    <div>
+                        <strong>${FUEL_NAMES[a.fuel_type_id] || '?'}</strong>
+                        ${a.city ? 'в г. ' + a.city : ''}
+                        <br>
+                        <small class="text-muted">Целевая цена: ≤ ${a.max_price} ₽</small>
+                    </div>
+                    <div class="text-end">
+                        ${triggered ? '<span class="badge bg-success">Сработало</span>' : '<span class="badge bg-warning text-dark">Активно</span>'}
+                        <br>
+                        <button class="btn btn-sm btn-outline-danger mt-1" onclick="deleteAlert('${a.id}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    } catch(err) {
+        container.innerHTML = '<div class="alert alert-danger">Ошибка загрузки: ' + err.message + '</div>';
+    }
+}
+
+async function deleteAlert(id) {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+    
+    try {
+        const response = await fetch('/api/alerts/' + id, {
+            method: 'DELETE',
+            headers: {'Authorization': 'Bearer ' + token}
+        });
+        if (response.ok) loadAlerts();
+    } catch(err) {
+        console.error('Delete error:', err);
+    }
+}
+
+document.getElementById('alert-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+    
+    const data = {
+        fuel_type_id: parseInt(document.getElementById('fuel_type_id').value),
+        max_price: parseFloat(document.getElementById('max_price').value),
+        city: document.getElementById('city').value || null,
+        notify_by_email: document.getElementById('notify_by_email').checked
+    };
+    
+    try {
+        const response = await fetch('/api/alerts/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('alertModal'));
+            modal.hide();
+            loadAlerts();
+        } else {
+            const err = await response.json();
+            document.getElementById('alert-error').innerHTML = '<div class="alert alert-danger mt-2">' + (err.detail || 'Ошибка') + '</div>';
+        }
+    } catch(err) {
+        document.getElementById('alert-error').innerHTML = '<div class="alert alert-danger mt-2">Ошибка соединения</div>';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', loadAlerts);
+</script>
+{% endblock %}

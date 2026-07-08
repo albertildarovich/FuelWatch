@@ -1,0 +1,125 @@
+/* FuelWatch Custom Styles */
+
+:root {
+    --fuel-color: #ffc107;
+    --fuel-dark: #cc9a06;
+}
+
+body {
+    background-color: #1a1d23;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Fuel pump gradient */
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+    background: linear-gradient(135deg, #ffc107, #fd7e14);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Cards */
+.card {
+    border: 1px solid #2d323e;
+    background-color: #212529;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Price badges */
+.price-down {
+    color: #198754;
+}
+
+.price-up {
+    color: #dc3545;
+}
+
+.price-stable {
+    color: #6c757d;
+}
+
+/* Station brand colors */
+.brand-lukoil { border-left: 4px solid #e31e24; }
+.brand-gazprom { border-left: 4px solid #007ac2; }
+.brand-rosneft { border-left: 4px solid #003c71; }
+.brand-shell { border-left: 4px solid #ffcc00; }
+.brand-tatneft { border-left: 4px solid #00985f; }
+
+/* Table styles */
+.table {
+    margin-bottom: 0;
+}
+
+.table th {
+    border-top: none;
+    color: #9ca3af;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+/* Fuel type buttons */
+.btn-group .btn-outline-warning {
+    border-color: #2d323e;
+    color: #ffc107;
+}
+
+.btn-group .btn-outline-warning:hover,
+.btn-group .btn-outline-warning.active {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #1a1d23;
+}
+
+/* Alert cards */
+.alert-card {
+    border-left: 4px solid var(--fuel-color);
+}
+
+.alert-card.triggered {
+    border-left-color: #198754;
+    opacity: 0.7;
+}
+
+/* Footer */
+.footer {
+    background-color: #212529 !important;
+}
+
+/* Loading spinner */
+.spinner-border.text-warning {
+    --bs-spinner-width: 3rem;
+    --bs-spinner-height: 3rem;
+}
+
+/* Toast notifications */
+.toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1050;
+}
+
+/* Animations */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

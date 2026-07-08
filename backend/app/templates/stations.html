@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}АЗС{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-geo-alt"></i> Список АЗС
+    </h2>
+    <div>
+        <input type="text" class="form-control" id="citySearch" 
+               placeholder="Поиск по городу..." oninput="loadStations(this.value)">
+    </div>
+</div>
+
+<div id="stations-list">
+    <div class="text-center py-5">
+        <div class="spinner-border text-warning" role="status">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadStations(city) {
+    const container = document.getElementById('stations-list');
+    container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-warning" role="status"><span class="visually-hidden">Загрузка...</span></div></div>';
+    
+    try {
+        let url = '/api/stations/';
+        if (city) url += '?city=' + encodeURIComponent(city);
+        
+        const response = await fetch(url);
+        const stations = await response.json();
+        
+        if (stations.length === 0) {
+            container.innerHTML = '<div class="alert alert-info">АЗС не найдены</div>';
+            return;
+        }
+        
+        let html = '<div class="row">';
+        stations.forEach(s => {
+            const brandClass = 'brand-' + s.brand.toLowerCase();
+            html += `
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card h-100 ${brandClass}">
+                        <div class="card-body">
+                            <h5 class="card-title">${s.name}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                <span class="badge bg-secondary">${s.brand}</span>
+                            </h6>
+                            <p class="card-text">
+                                <i class="bi bi-geo-alt"></i> ${s.address}<br>
+                                <i class="bi bi-building"></i> ${s.city}, ${s.region}
+                            </p>
+                            <button class="btn btn-sm btn-outline-warning" onclick="showStationPrices('${s.id}')">
+                                <i class="bi bi-currency-dollar"></i> Цены
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    } catch(err) {
+        container.innerHTML = '<div class="alert alert-danger">Ошибка загрузки: ' + err.message + '</div>';
+    }
+}
+
+function showStationPrices(stationId) {
+    window.location.href = '/dashboard?station=' + stationId;
+}
+
+document.addEventListener('DOMContentLoaded', () => loadStations(''));
+</script>
+{% endblock %}

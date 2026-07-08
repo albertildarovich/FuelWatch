@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Цены на топливо{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-speedometer2"></i> Цены на топливо
+    </h2>
+    <div class="d-flex gap-2">
+        <select class="form-select form-select-sm" id="cityFilter" onchange="loadPrices()">
+            <option value="">Все города</option>
+            <option value="Москва">Москва</option>
+            <option value="Санкт-Петербург">Санкт-Петербург</option>
+            <option value="Нижний Новгород">Нижний Новгород</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="loadPrices()">
+            <i class="bi bi-arrow-clockwise"></i> Обновить
+        </button>
+    </div>
+</div>
+
+<!-- Фильтры по типу топлива -->
+<div class="btn-group mb-4" role="group" id="fuelFilters">
+    <button type="button" class="btn btn-outline-warning active" data-fuel="all" onclick="filterFuel('all', this)">Все</button>
+    <button type="button" class="btn btn-outline-warning" data-fuel="a-92" onclick="filterFuel('a-92', this)">АИ-92</button>
+    <button type="button" class="btn btn-outline-warning" data-fuel="a-95" onclick="filterFuel('a-95', this)">АИ-95</button>
+    <button type="button" class="btn btn-outline-warning" data-fuel="a-98" onclick="filterFuel('a-98', this)">АИ-98</button>
+    <button type="button" class="btn btn-outline-warning" data-fuel="dt" onclick="filterFuel('dt', this)">ДТ</button>
+    <button type="button" class="btn btn-outline-warning" data-fuel="gas" onclick="filterFuel('gas', this)">Газ</button>
+</div>
+
+<!-- Карточки с графиками цен -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="bi bi-graph-up"></i> Динамика цен
+                    <small class="text-muted" id="chart-subtitle">— выберите бренд и топливо</small>
+                </h5>
+                <div class="chart-container" style="position: relative; height: 250px;">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Таблица цен -->
+<div id="prices-table">
+    <div class="text-center py-5">
+        <div class="spinner-border text-warning" role="status">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+    </div>
+</div>
+
+<script>
+let allPrices = [];
+let currentFuelFilter = 'all';
+let priceChart = null;
+
+const FUEL_NAMES = {
+    11: 'АИ-92', 12: 'АИ-95', 13: 'АИ-98', 14: 'ДТ', 15: 'Газ'
+};
+
+const FUEL_SLUGS = {
+    11: 'a-92', 12: 'a-95', 13: 'a-98', 14: 'dt', 15: 'gas'
+};
+
+const FUEL_COLORS = {
+    11: '#ffc107', 12: '#0dcaf0', 13: '#198754', 14: '#dc3545', 15: '#6f42c1'
+};
+
+async function loadPrices() {
+    const table = document.getElementById('prices-table');
+    table.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-warning" role="status"><span class="visually-hidden">Загрузка...</span></div></div>';
+    
+    try {
+        const [pricesResp, stationsResp] = await Promise.all([
+            fetch('/api/prices/'),
+            fetch('/api/stations/')
+        ]);
+        
+        if (!pricesResp.ok || !stationsResp.ok) throw new Error('HTTP error');
+        
+        allPrices = await pricesResp.json();
+        const stations = await stationsResp.json();
+        const stationsMap = {};
+        stations.forEach(s => stationsMap[s.id] = s);
+        
+        renderPrices(allPrices, stationsMap);
+        buildChart(allPrices, stationsMap);
+    } catch(err) {
+        table.innerHTML = '<div class="alert alert-danger">Ошибка загрузки: ' + err.message + '</div>';
+    }
+}
+
+function filterFuel(slug, btn) {
+    currentFuelFilter = slug;
+    document.querySelectorAll('#fuelFilters .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderPrices(allPrices, window._stationsMap);
+    buildChart(allPrices, window._stationsMap);
+}
+
+// --- График цен ---
+function buildChart(prices, stationsMap) {
+    const canvas = document.getElementById('priceChart');
+    if (!canvas) return;
+    
+    // Группируем историю цен по (бренд, тип_топлива)
+    // Для дашборда показываем среднюю цену по брендам
+    
+    // Собираем данные: цена по дням
+    const dailyByFuel = {};
+    
+    prices.forEach(p => {
+        const date = new Date(p.created_at).toLocaleDateString('ru-RU');
+        const key = p.fuel_type_id + '|' + date;
+        
+        if (!dailyByFuel[key]) {
+            dailyByFuel[key] = { sum: 0, count: 0, fuelId: p.fuel_type_id, date };
+        }
+        dailyByFuel[key].sum += parseFloat(p.price);
+        dailyByFuel[key].count += 1;
+    });
+    
+    // Собираем по типам топлива
+    const fuelData = {};
+    Object.values(dailyByFuel).forEach(d => {
+        if (!fuelData[d.fuelId]) fuelData[d.fuelId] = {};
+        fuelData[d.fuelId][d.date] = d.sum / d.count;
+    });
+    
+    // Собираем все даты
+    const allDates = [...new Set(Object.values(dailyByFuel).map(d => d.date))].sort((a, b) => {
+        const [d1, m1, y1] = a.split('.').map(Number);
+        const [d2, m2, y2] = b.split('.').map(Number);
+        return new Date(y1, m1-1, d1) - new Date(y2, m2-1, d2);
+    });
+    
+    if (allDates.length === 0) return;
+    
+    // Фильтр по выбранному топливу
+    const fuelIds = currentFuelFilter === 'all' 
+        ? Object.keys(FUEL_NAMES).map(Number)
+        : Object.entries(FUEL_SLUGS).filter(([_, v]) => v === currentFuelFilter).map(([k]) => Number(k));
+    
+    if (priceChart) priceChart.destroy();
+    
+    const datasets = [];
+    fuelIds.forEach(fuelId => {
+        const data = fuelData[fuelId] || {};
+        const values = allDates.map(d => data[d] ?? null);
+        datasets.push({
+            label: FUEL_NAMES[fuelId],
+            data: values,
+            borderColor: FUEL_COLORS[fuelId],
+            backgroundColor: FUEL_COLORS[fuelId] + '33',
+            tension: 0.3,
+            fill: true,
+            spanGaps: true,
+            pointRadius: 3,
+        });
+    });
+    
+    const ctx = canvas.getContext('2d');
+    priceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: allDates,
+            datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { color: '#e5e7eb' }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#2d323e' },
+                    ticks: { color: '#9ca3af' }
+                },
+                y: {
+                    grid: { color: '#2d323e' },
+                    ticks: {
+                        color: '#9ca3af',
+                        callback: v => v + ' ₽'
+                    },
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+    
+    document.getElementById('chart-subtitle').textContent = 'средняя цена по дням';
+}
+
+// --- Таблица цен ---
+function renderPrices(prices, stationsMap) {
+    window._stationsMap = stationsMap;
+    const table = document.getElementById('prices-table');
+    
+    // Группируем: последняя цена для каждой АЗС + тип топлива
+    const grouped = {};
+    prices.forEach(p => {
+        const key = p.station_id + '-' + p.fuel_type_id;
+        if (!grouped[key] || new Date(p.created_at) > new Date(grouped[key].created_at)) {
+            grouped[key] = p;
+        }
+    });
+    
+    // Фильтр
+    let filtered = Object.values(grouped);
+    if (currentFuelFilter !== 'all') {
+        filtered = filtered.filter(p => FUEL_SLUGS[p.fuel_type_id] === currentFuelFilter);
+    }
+    
+    if (filtered.length === 0) {
+        table.innerHTML = '<div class="alert alert-info">Нет данных о ценах</div>';
+        return;
+    }
+    
+    let html = `
+    <div class="table-responsive">
+        <table class="table table-dark table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>АЗС</th>
+                    <th>Бренд</th>
+                    <th>Город</th>
+                    <th>Топливо</th>
+                    <th>Цена</th>
+                    <th>Источник</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    filtered.forEach(p => {
+        const station = stationsMap[p.station_id] || {};
+        const brandClass = 'brand-' + (station.brand || '').toLowerCase();
+        html += `
+            <tr class="${brandClass}" style="cursor:pointer" onclick="showHistory('${p.station_id}', ${p.fuel_type_id}, '${station.name || ''}', '${FUEL_NAMES[p.fuel_type_id] || ''}')">
+                <td>${station.name || p.station_id}</td>
+                <td><span class="badge bg-secondary">${station.brand || '?'}</span></td>
+                <td>${station.city || '?'}</td>
+                <td><strong>${FUEL_NAMES[p.fuel_type_id] || '?'}</strong></td>
+                <td><span class="fs-5 fw-bold text-warning">${p.price} ₽</span></td>
+                <td><small class="text-muted">${p.source === 'parsed' ? '📡 парсинг' : '👤 пользователь'}</small></td>
+                <td><i class="bi bi-graph-up-arrow text-info"></i></td>
+            </tr>
+        `;
+    });
+    
+    html += `
+            </tbody>
+        </table>
+    </div>
+    <small class="text-muted">Показано ${filtered.length} записей</small>
+    `;
+    
+    table.innerHTML = html;
+}
+
+// --- История цен для конкретной АЗС ---
+async function showHistory(stationId, fuelTypeId, stationName, fuelName) {
+    const modal = new bootstrap.Modal(document.getElementById('historyModal'));
+    document.getElementById('historyModalLabel').textContent = `${stationName} — ${fuelName}`;
+    document.getElementById('historyBody').innerHTML = '<div class="text-center py-3"><div class="spinner-border text-warning"></div></div>';
+    document.getElementById('historyChartContainer').innerHTML = '<canvas id="historyChart"></canvas>';
+    modal.show();
+    
+    try {
+        const resp = await fetch(`/api/prices/history/${stationId}/${fuelTypeId}?limit=100`);
+        const history = await resp.json();
+        
+        if (history.length === 0) {
+            document.getElementById('historyBody').innerHTML = '<div class="alert alert-info">Нет истории цен</div>';
+            return;
+        }
+        
+        const labels = history.map(p => new Date(p.created_at).toLocaleDateString('ru-RU'));
+        const prices = history.map(p => parseFloat(p.price));
+        
+        document.getElementById('historyBody').innerHTML = `
+            <p class="text-muted">Последняя цена: <strong class="text-warning">${prices[0]} ₽</strong></p>
+            <p class="text-muted">История: <strong>${history.length}</strong> записей</p>
+        `;
+        
+        setTimeout(() => {
+            const ctx = document.getElementById('historyChart');
+            if (!ctx) return;
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.reverse(),
+                    datasets: [{
+                        label: `${fuelName} — ${stationName}`,
+                        data: prices.reverse(),
+                        borderColor: '#ffc107',
+                        backgroundColor: '#ffc10733',
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#2d323e' },
+                            ticks: { color: '#9ca3af', maxTicksLimit: 10 }
+                        },
+                        y: {
+                            grid: { color: '#2d323e' },
+                            ticks: { color: '#9ca3af', callback: v => v + ' ₽' },
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }, 100);
+    } catch(err) {
+        document.getElementById('historyBody').innerHTML = '<div class="alert alert-danger">Ошибка загрузки истории</div>';
+    }
+}
+
+// Загружаем при загрузке страницы
+document.addEventListener('DOMContentLoaded', loadPrices);
+</script>
+
+<!-- Modal истории цен -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="historyModalLabel">История цен</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="historyBody"></div>
+                <div id="historyChartContainer" style="height: 250px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

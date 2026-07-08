@@ -1,14 +1,14 @@
 """
 Celery задачи для проверки и отправки уведомлений о ценах.
 """
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from app.tasks.celery_app import celery_app
+from sqlalchemy import desc, select
+
 from app.database import async_session
 from app.models.alert import PriceAlert
 from app.models.station import StationFuelPrice
-
-from sqlalchemy import select, desc
+from app.tasks.celery_app import celery_app
 
 
 @celery_app.task
@@ -25,7 +25,7 @@ async def _check_alerts_async():
     async with async_session() as session:
         # Получаем все активные алерты
         result = await session.execute(
-            select(PriceAlert).where(PriceAlert.is_active == True)
+            select(PriceAlert).where(PriceAlert.is_active)
         )
         alerts = result.scalars().all()
 
@@ -47,9 +47,9 @@ async def _check_alerts_async():
 
             if latest_price and latest_price.price <= alert.max_price:
                 # Цель достигнута — отправляем уведомление
-                alert.last_notified_at = datetime.now(timezone.utc)
+                alert.last_notified_at = datetime.now(UTC)
                 alert.is_active = False  # Отключаем после срабатывания
-                
+
                 print(
                     f"ALERT: Цена {latest_price.price} руб. достигла цели "
                     f"{alert.max_price} руб. для alert {alert.id}"

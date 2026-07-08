@@ -1,23 +1,23 @@
+
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.station import GasStation, FuelType, StationFuelPrice
-from app.schemas.station import GasStationRead, GasStationWithPrices, FuelTypeRead
+from app.models.station import FuelType, GasStation
+from app.schemas.station import FuelTypeRead, GasStationRead, GasStationWithPrices
 
 router = APIRouter()
 
 
 @router.get("/", response_model=list[GasStationRead])
 async def list_stations(
-    city: Optional[str] = Query(None),
-    brand: Optional[str] = Query(None),
-    region: Optional[str] = Query(None),
+    city: str | None = Query(None),
+    brand: str | None = Query(None),
+    region: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(GasStation).where(GasStation.is_active == True)
+    query = select(GasStation).where(GasStation.is_active)
     if city:
         query = query.where(GasStation.city.ilike(f"%{city}%"))
     if brand:

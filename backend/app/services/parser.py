@@ -1,11 +1,11 @@
 """
 Модуль для парсинга цен на топливо с сайтов АЗС.
 """
+import re
+from decimal import Decimal
+
 import httpx
 from bs4 import BeautifulSoup
-from decimal import Decimal
-from typing import Optional
-import re
 
 
 class FuelPriceParser:
@@ -22,7 +22,7 @@ class FuelPriceParser:
         return wrapper
 
     @staticmethod
-    async def parse_price(url: str) -> Optional[Decimal]:
+    async def parse_price(url: str) -> Decimal | None:
         """
         Универсальный парсер цены со страницы.
         Пытается найти число с двумя знаками после запятой — похожее на цену топлива.
@@ -50,12 +50,12 @@ class FuelPriceParser:
 
 # Пример регистрации парсера для конкретного бренда
 @FuelPriceParser.register("Лукойл")
-async def parse_lukoil(station_url: str) -> Optional[Decimal]:
+async def parse_lukoil(station_url: str) -> Decimal | None:
     """Парсер для АЗС Лукойл"""
     return await FuelPriceParser.parse_price(station_url)
 
 
 @FuelPriceParser.register("Газпромнефть")
-async def parse_gazprom(station_url: str) -> Optional[Decimal]:
+async def parse_gazprom(station_url: str) -> Decimal | None:
     """Парсер для АЗС Газпромнефть"""
     return await FuelPriceParser.parse_price(station_url)

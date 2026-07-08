@@ -1,11 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
-from typing import Optional
 
 from app.database import get_db
-from app.models.station import GasStation, FuelType, StationFuelPrice
-from app.schemas.station import StationFuelPriceRead, StationFuelPriceCreate, PriceHistoryRead
+from app.models.station import StationFuelPrice
+from app.schemas.station import PriceHistoryRead, StationFuelPriceCreate, StationFuelPriceRead
 from app.services.auth import AuthService
 
 router = APIRouter()
@@ -13,9 +12,9 @@ router = APIRouter()
 
 @router.get("/", response_model=list[StationFuelPriceRead])
 async def get_prices(
-    city: Optional[str] = Query(None),
-    fuel_type_id: Optional[int] = Query(None),
-    station_id: Optional[str] = Query(None),
+    city: str | None = Query(None),
+    fuel_type_id: int | None = Query(None),
+    station_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """

@@ -7,14 +7,10 @@ import asyncio
 import random
 from decimal import Decimal
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from app.database import async_session
-from app.database import engine, Base
-from app.models.station import GasStation, FuelType, StationFuelPrice
-from app.models.user import User
-from app.services.auth import AuthService
-
+from app.models.station import FuelType, GasStation, StationFuelPrice
 
 STATIONS_DATA = [
     # Москва

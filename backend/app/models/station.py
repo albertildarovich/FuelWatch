@@ -1,9 +1,8 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import (
-    String, Text, Numeric, DateTime, ForeignKey, Integer, Float, Boolean, func
-)
+
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,7 +28,9 @@ class GasStation(Base):
     )
 
     # Relationships
-    prices = relationship("StationFuelPrice", back_populates="station", cascade="all, delete-orphan")
+    prices = relationship(
+        "StationFuelPrice", back_populates="station", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<GasStation(id={self.id}, brand={self.brand}, name={self.name})>"

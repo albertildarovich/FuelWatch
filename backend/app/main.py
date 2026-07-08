@@ -6,12 +6,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from jinja2 import Environment, FileSystemLoader
 from starlette.templating import _TemplateResponse
 
-from app.database import engine, Base
-from app.config import get_settings
 from app.api import router as api_router
+from app.config import get_settings
+from app.database import Base, engine
 from app.seed_data import seed_database
 
 settings = get_settings()
@@ -23,8 +22,8 @@ BASE_DIR = Path(__file__).resolve().parent
 class FixedJinja2Templates(Jinja2Templates):
     def __init__(self, directory: str) -> None:
         super().__init__(directory=directory)
-    
-    def TemplateResponse(self, name: str, context: dict, **kwargs: Any) -> _TemplateResponse:
+
+    def template_response(self, name: str, context: dict, **kwargs: Any) -> _TemplateResponse:
         if "request" not in context:
             raise ValueError("context must include a 'request' key")
         # Передаём globals явно пустым dict, чтобы обойти баг Jinja2
@@ -41,10 +40,10 @@ async def lifespan(app: FastAPI):
     # Startup: создаём таблицы и заполняем начальными данными
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     # Seed data (только если таблицы пустые)
     await seed_database()
-    
+
     yield
     # Shutdown: закрываем соединения
     await engine.dispose()

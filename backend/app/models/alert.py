@@ -1,9 +1,8 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import (
-    String, Numeric, DateTime, ForeignKey, Boolean, Integer, func
-)
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,4 +40,7 @@ class PriceAlert(Base):
     user = relationship("User", back_populates="alerts")
 
     def __repr__(self):
-        return f"<PriceAlert(id={self.id}, fuel_type={self.fuel_type_id}, max_price={self.max_price})>"
+        return (
+            f"<PriceAlert(id={self.id}, fuel_type={self.fuel_type_id}, "
+            f"max_price={self.max_price})>"
+        )

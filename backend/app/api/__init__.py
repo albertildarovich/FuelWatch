@@ -1,9 +1,8 @@
 from fastapi import APIRouter
 
-router = APIRouter()
+from app.api import alerts, auth, prices, stations
 
-# Импортируем и подключаем подроутеры
-from app.api import auth, stations, prices, alerts
+router = APIRouter()
 
 router.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 router.include_router(stations.router, prefix="/api/stations", tags=["Stations"])

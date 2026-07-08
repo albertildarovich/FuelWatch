@@ -1,14 +1,13 @@
 """
 Celery задачи для парсинга цен на топливо.
 """
-from app.tasks.celery_app import celery_app
-from app.database import async_session
-from app.models.station import GasStation, FuelType, StationFuelPrice
-from app.services.parser import FuelPriceParser
+from decimal import Decimal
 
 from sqlalchemy import select
-from decimal import Decimal
-from typing import Optional
+
+from app.database import async_session
+from app.models.station import FuelType, GasStation, StationFuelPrice
+from app.tasks.celery_app import celery_app
 
 
 @celery_app.task
@@ -24,7 +23,7 @@ def parse_all_stations():
 async def _parse_all_stations_async():
     async with async_session() as session:
         result = await session.execute(
-            select(GasStation).where(GasStation.is_active == True)
+            select(GasStation).where(GasStation.is_active)
         )
         stations = result.scalars().all()
 

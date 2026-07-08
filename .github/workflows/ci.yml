@@ -31,28 +31,6 @@ jobs:
     name: 🧪 Tests (pytest)
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: fuelwatch
-          POSTGRES_PASSWORD: fuelwatch_pass
-          POSTGRES_DB: fuelwatch
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U fuelwatch -d fuelwatch"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-
     steps:
       - uses: actions/checkout@v4
 
@@ -68,12 +46,6 @@ jobs:
           pip install -r requirements.txt
 
       - name: Запуск тестов
-        env:
-          DATABASE_URL: postgresql+asyncpg://fuelwatch:fuelwatch_pass@localhost:5432/fuelwatch
-          REDIS_URL: redis://localhost:6379/0
-          CELERY_BROKER_URL: redis://localhost:6379/1
-          CELERY_RESULT_BACKEND: redis://localhost:6379/2
-          JWT_SECRET_KEY: test-secret-key
         run: |
           cd backend
           pytest -v --tb=short

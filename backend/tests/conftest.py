@@ -1,7 +1,6 @@
 """
 Общие фикстуры для тестов.
 """
-import asyncio
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -12,17 +11,8 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-# Используем тестовую БД
 settings = get_settings()
-TEST_DATABASE_URL = settings.database_url  # по умолчанию localhost, в CI переопределится через env
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Один event_loop на всю сессию тестов"""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+TEST_DATABASE_URL = settings.database_url
 
 
 @pytest.fixture

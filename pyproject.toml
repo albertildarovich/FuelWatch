@@ -14,3 +14,5 @@ select = ["E", "F", "W", "I", "N", "UP"]
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+

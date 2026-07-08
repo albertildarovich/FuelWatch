@@ -1,9 +1,9 @@
 from datetime import UTC, datetime, timedelta
 
+import bcrypt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +13,6 @@ from app.models.user import User
 from app.schemas.user import TokenResponse, UserCreate, UserLogin
 
 settings = get_settings()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer(auto_error=False)
 
 
@@ -23,11 +22,13 @@ class AuthService:
 
     @staticmethod
     def hash_password(password: str) -> str:
-        return pwd_context.hash(password)
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        return pwd_context.verify(plain_password, hashed_password)
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+        )
 
     @staticmethod
     def create_access_token(data: dict) -> str:

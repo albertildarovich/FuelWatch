@@ -33,11 +33,11 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16
         env:
           POSTGRES_USER: fuelwatch
           POSTGRES_PASSWORD: fuelwatch_pass
-          POSTGRES_DB: fuelwatch_test
+          POSTGRES_DB: fuelwatch
         ports:
           - 5432:5432
         options: >-
@@ -47,7 +47,7 @@ jobs:
           --health-retries 5
 
       redis:
-        image: redis:7-alpine
+        image: redis:7
         ports:
           - 6379:6379
         options: >-
@@ -70,18 +70,9 @@ jobs:
           cd backend
           pip install -r requirements.txt
 
-      - name: Применение миграций
-        env:
-          DATABASE_URL: postgresql+asyncpg://fuelwatch:fuelwatch_pass@localhost:5432/fuelwatch_test
-          CELERY_BROKER_URL: redis://localhost:6379/1
-          CELERY_RESULT_BACKEND: redis://localhost:6379/2
-        run: |
-          cd backend
-          alembic upgrade head
-
       - name: Запуск тестов
         env:
-          DATABASE_URL: postgresql+asyncpg://fuelwatch:fuelwatch_pass@localhost:5432/fuelwatch_test
+          DATABASE_URL: postgresql+asyncpg://fuelwatch:fuelwatch_pass@localhost:5432/fuelwatch
           REDIS_URL: redis://localhost:6379/0
           CELERY_BROKER_URL: redis://localhost:6379/1
           CELERY_RESULT_BACKEND: redis://localhost:6379/2

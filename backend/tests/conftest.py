@@ -15,22 +15,44 @@ settings = get_settings()
 TEST_DATABASE_URL = settings.database_url
 
 
-@pytest.fixture
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Создаём временную таблицу для теста"""
+@pytest.fixture(scope="session")
+def event_loop():
+    """Один event loop на всю сессию (нужен для asyncpg)"""
+    import asyncio
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    yield loop
+    loop.close()
+
+
+@pytest.fixture(scope="session")
+async def engine():
+    """Один engine на всю сессию"""
     engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    yield engine
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 
-    async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+@pytest.fixture
+async def db_session(engine) -> AsyncGenerator[AsyncSession, None]:
+    """Каждый тест работает в своей транзакции и откатывает её после"""
+    connection = await engine.connect()
+    transaction = await connection.begin()
+
+    async_session = async_sessionmaker(
+        connection, class_=AsyncSession, expire_on_commit=False
+    )
 
     async with async_session() as session:
         yield session
+        await session.close()
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
-    await engine.dispose()
+    await transaction.rollback()
+    await connection.close()
 
 
 @pytest.fixture

@@ -41,7 +41,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready -U fuelwatch
+          --health-cmd "pg_isready -U fuelwatch -d fuelwatch"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
@@ -52,9 +52,6 @@ jobs:
           - 6379:6379
         options: >-
           --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4

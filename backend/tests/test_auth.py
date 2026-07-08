@@ -1,9 +1,9 @@
 """
 Тесты для AuthService: регистрация, логин, JWT.
 """
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from app.services.auth import AuthService
 
 

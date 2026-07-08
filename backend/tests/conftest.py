@@ -2,15 +2,15 @@
 Общие фикстуры для тестов.
 """
 import asyncio
-import pytest
-from typing import AsyncGenerator, Generator
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.pool import NullPool
+from collections.abc import AsyncGenerator
 
-from app.main import app
-from app.database import Base, get_db
+import pytest
 from app.config import get_settings
+from app.database import Base, get_db
+from app.main import app
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 # Используем тестовую БД
 settings = get_settings()

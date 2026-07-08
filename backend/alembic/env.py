@@ -1,8 +1,8 @@
 from logging.config import fileConfig
 import os
+import sys
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
@@ -22,10 +22,15 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-import sys
-sys.path.insert(0, '.')
-from app.database import Base
-from app.models import User, GasStation, FuelType, StationFuelPrice, PriceAlert
+sys.path.insert(0, ".")
+from app.database import Base  # noqa: E402
+from app.models import (  # noqa: E402, F401
+    User,
+    GasStation,
+    FuelType,
+    StationFuelPrice,
+    PriceAlert,
+)
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
